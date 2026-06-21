@@ -3,8 +3,8 @@ use crate::interpretor::{ast::*, lexer::*};
 pub fn parse_item(tokens: &mut impl Iterator<Item = Token>) -> Option<Item> {
 	match tokens.next() {
 		Some(Token::Let) => Some(parse_stmt(tokens)),
-		None => None,
-		_ => panic!("Statement Err"),
+		Some(Token::EOF) => None,
+		token => panic!("Err: Tried to parse: {:?}", token),
 	}
 }
 
@@ -36,9 +36,18 @@ pub fn parse_expr(tokens: &mut impl Iterator<Item = Token>) -> Expr {
 						op: id,
 					}
 				);
+				return expr;
 			},
+			Token::Numeric { digits, suffix } => {
+				expr = Expr::ExprLit(
+					ExprLit::Int {
+						digits,
+						suffix,
+					}
+				)
+			}
 			Token::Semi => break,
-			_ => panic!("Statement Err"),
+			_ => panic!("Expression Err"),
 		}
 	}
 	expr

@@ -1,19 +1,21 @@
 use crate::interpretor::lexer::Token;
 use crate::interpretor::parser;
 
+#[derive(Debug)]
 pub struct SyntaxTree {
 	body: Vec<Item>,
 }
+#[derive(Debug)]
 pub enum Item {
 	ItemLocal(ItemLocal),
 }
-
+#[derive(Debug)]
 #[derive(Default)]
 pub struct ItemLocal {
 	pub ident: String,
 	pub expr: Expr,
 }
-
+#[derive(Debug)]
 #[derive(Default)]
 pub enum Expr {
 	#[default]
@@ -21,15 +23,17 @@ pub enum Expr {
 	ExprBinary(ExprBinary),
 	ExprLit(ExprLit),
 }
+#[derive(Debug)]
 pub struct ExprBinary {
 	pub l: Box<Expr>,
 	pub r: Box<Expr>,
 	pub op: u8,
 }
+#[derive(Debug)]
 pub enum ExprLit {
 	Int {
 		digits: String,
-		suffix: Option<String>,
+		suffix: String,
 	}
 }
 
