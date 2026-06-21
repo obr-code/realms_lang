@@ -1,35 +1,20 @@
+use crate::interpretor::ast::*;
+
+#[derive(Debug)]
 pub enum Token {
-	BinaryOperator {
-		id: u8,
-	},
-	Equal,
-	Identifier {
-		ident: Vec<u8>,
-	},
+	BinaryOperator(u8),
+	Empty,
+	EOF,
+	Eq,
+	Ident(String),
 	Let,
-	Number {
-		val: i64,
-	},
-	ParentOpen,
 	ParentClose,
-}
-use std::fmt;
-impl fmt::Debug for Token {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		match self {
-			Token::BinaryOperator { id } => f.debug_struct("BinaryOperator")
-				.field("operator", &char::from(*id))
-				.finish(),
-			Token::Equal => write!(f, "Equal"),
-			Token::Identifier { ident } => f.debug_struct("Identifier")
-				.field("id", &String::from_utf8(ident.clone()).unwrap())
-				.finish(),
-			Token::Let => write!(f, "Let"),
-			Token::Number { val } => f.debug_struct("Number")
-				.field("val", &val)
-				.finish(),
-		}
-	}
+	ParentOpen,
+	Numeric {
+		digits: String,
+		suffix: String,
+	},
+	Semi,
 }
 
 use std::fs::File;
@@ -41,16 +26,14 @@ pub fn tokenize(source: File) -> Result<Vec<Token>, std::io::Error> {
 	for b in source.bytes() {
 		if let Ok(b) = b {
 			match b {
-				// BinaryOperator
+				// BinaryExpr
 				b'+' | b'-' | b'*' | b'/' => tokens.push(
-					Token::BinaryOperator {
-						id: b,
-					}
+					Token::BinaryOperator(b)
 				),
 			
-				// Equal
+				// Eq
 				b'=' => tokens.push(
-					Token::Equal
+					Token::Eq
 				),
 
 				// Parentheses
@@ -65,11 +48,17 @@ pub fn tokenize(source: File) -> Result<Vec<Token>, std::io::Error> {
 				b'\n' | b'\r' | b' ' => {
 					if let Some(&b) = stack.first() {
 						match b {
-							b'0'..b'9' => tokens.push(
-								Token::Number {
-									val: stack.drain(0..).fold(0, |val, digit| val + digit as i64),
-								}
-							),
+							b'0'..b'9' => tokens.push({
+								let mut w: Vec<&[u8]> = stack.split(|b| b.is_ascii_alphabetic()).collect();
+								w.push(&[]);
+
+								let digits = String::from_utf8(w[0].into()).unwrap();
+								let suffix = String::from_utf8(w[1].into()).unwrap();
+
+								stack.clear();
+
+								Token::Numeric { digits, suffix }
+							}),
 							_ => match &stack[..] {
 								// Let
 								b"let" => {
@@ -80,14 +69,17 @@ pub fn tokenize(source: File) -> Result<Vec<Token>, std::io::Error> {
 								},
 								// Identifier
 								_ => tokens.push(
-									Token::Identifier {
-										ident: stack.drain(0..).collect(),
-									}
+									Token::Ident(String::from_utf8(stack.drain(0..).collect::<Vec<u8>>()).unwrap())
 								),
 							}
 						};
 					};
 				},
+
+				// Semicolon
+				b';' => tokens.push(
+					Token::Semi
+				),
 
 				// Digit
 				digit => stack.push(digit),
@@ -97,18 +89,21 @@ pub fn tokenize(source: File) -> Result<Vec<Token>, std::io::Error> {
 	// End
 	if let Some(&b) = stack.first() {
 		match b {
-			b'0'..b'9' => tokens.push(
-				Token::Number {
-					val: stack.drain(0..).fold(0, |val, digit| val + digit as i64),
+			b'0'..b'9' => tokens.push({
+				let mut w: Vec<&[u8]> = stack.split(|b| b.is_ascii_alphabetic()).collect();
+				w.push(&[]);
+
+				Token::Numeric {
+					digits: String::from_utf8(w[0].into()).unwrap(),
+					suffix: String::from_utf8(w[1].into()).unwrap(),
 				}
-			),
-			_ => tokens.push(
-				Token::Identifier {
-					ident: stack.drain(0..).collect(),
-				}
+			}),
+			_ =>  tokens.push(
+				Token::Ident(String::from_utf8(stack.drain(0..).collect::<Vec<u8>>()).unwrap())
 			),
 		};
 	}
+	tokens.push(Token::EOF);
 
 	return Ok(tokens);
 }
