@@ -1,2 +1,2 @@
-pub mod classes;
-pub mod interpretor;
+pub mod frontend;
+pub mod runtime;

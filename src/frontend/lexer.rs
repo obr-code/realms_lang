@@ -1,7 +1,7 @@
-use crate::interpretor::ast::*;
-use crate::interpretor::lexer::Token::BinaryOperator;
+use crate::frontend::ast::*;
+use crate::frontend::lexer::Token::BinaryOperator;
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token {
 	BinaryOperator(u8),
 	Empty,

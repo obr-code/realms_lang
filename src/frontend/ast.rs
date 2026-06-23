@@ -1,5 +1,6 @@
-use crate::interpretor::lexer::Token;
-use crate::interpretor::parser;
+use std::collections::VecDeque;
+use crate::frontend::lexer::Token;
+use crate::frontend::parser;
 
 #[derive(Debug)]
 pub struct SyntaxTree {
@@ -21,6 +22,7 @@ pub enum Expr {
 	#[default]
 	Empty,
 	ExprBinary(ExprBinary),
+	ExprIdent(String),
 	ExprLit(ExprLit),
 }
 #[derive(Debug)]
@@ -38,9 +40,9 @@ pub enum ExprLit {
 }
 
 impl SyntaxTree {
-	pub fn new(mut tokens: impl Iterator<Item = Token>) -> Self {
+	pub fn new(tokens: impl Iterator<Item = Token>) -> Self {
 		let mut body = vec![];
-
+		let mut tokens: VecDeque<Token> = tokens.collect();
 		while let Some(item) = parser::parse_item(&mut tokens) {
 			body.push(item);
 		};

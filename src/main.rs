@@ -1,6 +1,5 @@
-use realms_lang::interpretor::lexer;
-use realms_lang::interpretor::parser;
-use realms_lang::interpretor::ast::SyntaxTree;
+use realms_lang::frontend::lexer;
+use realms_lang::frontend::ast::SyntaxTree;
 use std::env;
 use std::fs::File;
 
@@ -11,8 +10,10 @@ fn main() -> std::io::Result<()> {
 	let tokens = lexer::tokenize(file)?;
 	println!("{:#?}", &tokens);
 
-	let ast = SyntaxTree::new(tokens.into_iter());
+	let ast = SyntaxTree::new(tokens.into_iter().peekable());
 	println!("{:#?}", &ast);
+
+	
 
 	Ok(())
 }
