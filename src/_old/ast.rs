@@ -2,13 +2,29 @@ use std::collections::VecDeque;
 use crate::frontend::lexer::Token;
 use crate::frontend::parser;
 
+
+pub struct Scope {
+	constants: Vec<ItemConstant>,
+	functions: Vec<ItemFunction>,
+}
+
+pub struct ItemFunction {
+	ident: String,
+	args: Vec<String>,
+	body: Block,
+}
+
+pub struct
+
 #[derive(Debug)]
 pub struct SyntaxTree {
-	body: Vec<Item>,
+	pub body: Vec<Item>,
 }
 #[derive(Debug)]
 pub enum Item {
+	ItemFunction(ItemFunction),
 	ItemLocal(ItemLocal),
+	Items
 }
 #[derive(Debug)]
 #[derive(Default)]
@@ -22,6 +38,7 @@ pub enum Expr {
 	#[default]
 	Empty,
 	ExprBinary(ExprBinary),
+	ExprFn(ExprFn),
 	ExprIdent(String),
 	ExprLit(ExprLit),
 }

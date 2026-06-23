@@ -1,1 +1,8 @@
-let x = 1 * 2 + 3;
+F sum(a, b) {
+	M res = a + b;
+}
+
+F main() {
+	M a = 2;
+	M b = 3;
+}

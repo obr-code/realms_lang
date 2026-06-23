@@ -1,14 +1,20 @@
-use crate::frontend::ast::*;
-use crate::frontend::lexer::Token::BinaryOperator;
+
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token {
 	BinaryOperator(u8),
+	BraceClose,
+	BraceOpen,
+	BracketClose,
+	BracketOpen,
+	Colon,
+	Const,
 	Empty,
 	EOF,
 	Eq,
+	Fn,
 	Ident(String),
-	Let,
+	Mut,
 	ParentClose,
 	ParentOpen,
 	Numeric {
@@ -16,10 +22,11 @@ pub enum Token {
 		suffix: String,
 	},
 	Semi,
+	Static,
 }
 
 use std::fs::File;
-use std::io::{Bytes, Read};
+use std::io::Read;
 
 pub fn tokenize(source: File) -> Result<Vec<Token>, std::io::Error> {
 	let mut bytes = source.bytes();
@@ -39,7 +46,10 @@ pub fn tokenize(source: File) -> Result<Vec<Token>, std::io::Error> {
 
 		if !stack.is_empty() {
 			match &stack[..] {
-				b"let" => tokens.push(Token::Let),
+				b"C" => tokens.push(Token::Const),
+				b"F" => tokens.push(Token::Fn),
+				b"M" => tokens.push(Token::Mut),
+				b"S" => tokens.push(Token::Static),
 
 				_ => match stack.first().unwrap() {
 					// Numeric
@@ -55,15 +65,23 @@ pub fn tokenize(source: File) -> Result<Vec<Token>, std::io::Error> {
 		match bit {
 			// Binary Operator
 			b'+' | b'-' | b'*' | b'/' | b'%' => tokens.push(Token::BinaryOperator(bit)),
+			// Colon
+			b':' => tokens.push(Token::Colon),
 			// Eq
 			b'=' => tokens.push(Token::Eq),
 			// Parentheses
 			b'(' => tokens.push(Token::ParentOpen),
 			b')' => tokens.push(Token::ParentClose),
+			// Braces
+			b'{' => tokens.push(Token::BraceOpen),
+			b'}' => tokens.push(Token::BraceClose),
+			// Brackets
+			b'[' => tokens.push(Token::BracketOpen),
+			b']' => tokens.push(Token::BracketClose),
 			// Semicolons
 			b';' => tokens.push(Token::Semi),
 			// White Spaces
-			b'\r' | b'\t' | b'\n' | b' ' => (),
+			b'\r' | b'\t' | b'\n' | b' ' | b',' => (),
 			// Digits
 			digit => {
 				stack.push(digit);
