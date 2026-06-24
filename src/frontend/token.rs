@@ -1,5 +1,9 @@
 
 
+
+pub type ClassID = String;
+pub type IdentID = String;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token {
 	BinaryOperator(u8),
@@ -7,22 +11,24 @@ pub enum Token {
 	BraceOpen,
 	BracketClose,
 	BracketOpen,
+	Class(ClassID),
 	Colon,
-	Const,
+	Let,
 	Empty,
 	EOF,
 	Eq,
 	Fn,
-	Ident(String),
-	Mut,
-	ParentClose,
-	ParentOpen,
+	Ident(IdentID),
 	Numeric {
 		digits: String,
 		suffix: String,
 	},
+	ParentClose,
+	ParentOpen,
+	Return,
+	Scope(Vec<Token>),
 	Semi,
-	Static,
+	Struct,
 }
 
 use std::fs::File;
@@ -46,10 +52,10 @@ pub fn tokenize(source: File) -> Result<Vec<Token>, std::io::Error> {
 
 		if !stack.is_empty() {
 			match &stack[..] {
-				b"C" => tokens.push(Token::Const),
-				b"F" => tokens.push(Token::Fn),
-				b"M" => tokens.push(Token::Mut),
-				b"S" => tokens.push(Token::Static),
+				b"fn" => tokens.push(Token::Fn),
+				b"let" => tokens.push(Token::Let),
+				b"struct" => tokens.push(Token::Struct),
+				b"return" => tokens.push(Token::Return),
 
 				_ => match stack.first().unwrap() {
 					// Numeric
@@ -91,6 +97,7 @@ pub fn tokenize(source: File) -> Result<Vec<Token>, std::io::Error> {
 		
 	}
 	tokens.push(Token::EOF);
+	let tokens = tokens.into_iter().parse_scope(Token::Empty);
 	Ok(tokens)
 }
 
@@ -102,7 +109,37 @@ pub fn token_num(stack: &mut Vec<u8>) -> Token {
 	Token::Numeric { digits, suffix }
 }
 pub fn token_ident(stack: &mut Vec<u8>) -> Token {
-	let ident = String::from_utf8(stack.drain(..).collect()).unwrap();
+	let ident_id = IdentID::from_utf8(stack.drain(..).collect()).unwrap();
 
-	Token::Ident(ident)
+	Token::Ident(ident_id)
+}
+
+pub trait ParseScope {
+	fn parse_scope(&mut self, open: Token) -> Vec<Token>;
+}
+impl<T> ParseScope for T
+where
+	T: Iterator<Item = Token>
+{
+	fn parse_scope(&mut self, open: Token) -> Vec<Token> {
+		let close = match open {
+			Token::BraceOpen => Token::BraceClose,
+			Token::BracketOpen => Token::BracketClose,
+			Token::ParentOpen => Token::ParentClose,
+			_ => Token::Semi,
+		};
+		let mut inner = vec![];
+
+		while let Some(token) = self.next() {
+			inner.push(match token {
+				Token::BraceOpen => Token::Scope(self.parse_scope(Token::BraceOpen)),
+				Token::BracketOpen => Token::Scope(self.parse_scope(Token::BracketOpen)),
+				Token::ParentOpen => Token::Scope(self.parse_scope(Token::ParentOpen)),
+				token if token == close || token == Token::EOF => return inner,
+				token => token,
+			});
+		}
+
+		inner
+	}
 }

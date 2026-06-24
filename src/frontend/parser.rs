@@ -1,5 +1,5 @@
 use std::collections::VecDeque;
-use crate::frontend::lexer::*;
+use crate::frontend::token::*;
 
 
 // Parser
@@ -15,10 +15,6 @@ impl Parser {
 	pub fn next(&mut self) -> Result<Item, Error> {
 		if let Some(token) = self.tokens.pop_front() {
 			match token {
-				// Constant Item
-				Token::Const => Ok(Item::ItemConstant(self.parse_const()?)),
-				// Static Item
-				Token::Static => todo!(),
 				// Function Item
 				Token::Fn => Ok(Item::ItemFunction(self.parse_function()?)),
 				// EOF
@@ -28,22 +24,6 @@ impl Parser {
 		} else {
 			unreachable!()
 		}
-	}
-
-	pub fn parse_const(&mut self) -> Result<ItemConstant, Error> {
-		todo!()
-		// let mut ident = String::new();
-		// let mut expr = Expr::Null;
-
-		// while let Some(token) = self.tokens.pop_front() {
-		// 	match token {
-		// 		Token::Ident(s) => ident = s,
-		// 		Token::Eq => self.parse_expr(),
-		// 		token => Err(Error::InvalidToken(token)),
-		// 	}
-		// }
-
-		// Err(Error::MissingToken)
 	}
 
 	pub fn parse_function(&mut self) -> Result<ItemFunction, Error> {
@@ -93,10 +73,8 @@ impl Parser {
 		// Scope
 		while let Some(token) = self.tokens.front() {
 			stmts.push(match token {
-				// Constant
-				Token::Const => todo!(),
-				// Mutable
-				Token::Mut => self.parse_local()?,
+				// Variable statement
+				Token::Let => Statement::Local(Self.parse_local()?),
 				// Numeric
 				Token::Numeric {..} | Token::BraceOpen => Statement::Expr(self.parse_expr()?),
 				// Others
@@ -107,12 +85,11 @@ impl Parser {
 		Ok(stmts)
 	}
 
-	pub fn parse_local(&mut self) -> Result<Statement, Error> {
+	pub fn parse_local(&mut self) -> Result<Local, Error> {
 		let mut ident = String::new();
 
 		while let Some(token) = self.tokens.pop_front() {
 			match token {
-				Token::Const => continue, // todo!()
 				Token::Eq => {
 					if let Some(semi) = self.tokens.iter().position(|token| *token == Token::Semi) {
 						let mut sub_parser = Parser::new(self.tokens.drain(..=semi));
@@ -128,7 +105,6 @@ impl Parser {
 					}
 				},
 				Token::Ident(s) => ident = s,
-				Token::Mut => continue, // todo!()
 				token => return Err(Error::InvalidToken(token)), 
 			}
 		}
@@ -227,26 +203,24 @@ pub enum Error {
 }
 
 // AST
-#[derive(Debug)]
-pub struct Program {
-	constants: Vec<ItemConstant>,
-	functions: Vec<ItemFunction>,
+#[derive(Debug, Default)]
+pub struct SyntaxTree {
+	pub items: Vec<Item>,
 }
-impl Program {
+impl SyntaxTree {
 	pub fn new(tokens: Vec<Token>) -> Result<Self, Error> {
 		let mut parser = Parser::new(tokens.into_iter());
-		let mut ast = Self {
-			constants: vec![],
-			functions: vec![],
-		};
+		let mut ast = Self::default();
+
 		loop {
 			let item = parser.next()?;
 			match item {
-				Item::EOF => return Ok(ast),
-				Item::ItemConstant(constant) => ast.constants.push(constant),
-				Item::ItemFunction(function) => ast.functions.push(function),
+				Item::EOF => break,
+				item => ast.items.push(item),
 			}
 		}
+
+		Ok(ast)
 	}
 }
 
@@ -254,39 +228,33 @@ impl Program {
 #[derive(Debug)]
 pub enum Item {
 	EOF,
-	ItemConstant(ItemConstant),
 	ItemFunction(ItemFunction),
 }
 
-// Constant
-#[derive(Debug)]
-pub struct ItemConstant {
-	ident: String,
-	expr: Expr,
-}
 // Function
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ItemFunction {
-	ident: String,
-	args: Vec<String>,
-	body: Block,
+	pub ident: String,
+	pub args: Vec<String>,
+	pub body: Block,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Block {
 	stmts: Vec<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
-	Local {
-		ident: String,
-		expr: Expr,
-	},
+	Local(Local),
 	Expr(Expr),
 }
+pub struct Local {
+	ident: String,
+	expr: Expr,
+}
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
 	Null,
 	EOF,
@@ -297,33 +265,33 @@ pub enum Expr {
 	ExprForLoop(ExprForLoop),
 	ExprPath(ExprPath),
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExprBinary {
 	l: Box<Expr>,
 	op: u8,
 	r: Box<Expr>,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExprBlock {
 	body: Block,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExprCall {
 	path: Vec<String>,
 	args: Vec<Expr>,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExprLit {
 	digits: String,
 	suffix: String,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExprForLoop {
 	path: String,
 	expr: ExprPath,
 	body: Block,
 }
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExprPath {
 	path: Vec<String>,
 }
